@@ -106,6 +106,102 @@ rule mrdegibbs:
         "cp {input[3]} {output[3]}"
 
 
+def _get_ref_run(wildcards):
+    filtered = inputs["dwi"].filter(
+        subject=wildcards.get("subject"), session=wildcards.get("session")
+    )
+    sizes = [
+        os.path.getsize(p) for p in expand(filtered.path, zip, **filtered.zip_lists)
+    ]
+    # adapted from https://stackoverflow.com/a/3382369
+    largest_ix = sorted(range(len(sizes)), key=sizes.__getitem__)[-1]
+
+    ref = expand(
+        bids(
+            root=work,
+            suffix="b0.nii.gz",
+            desc="degibbs",
+            datatype="dwi",
+            **input_wildcards["dwi"]
+        ),
+        zip,
+        **filtered.zip_lists
+    )[largest_ix]
+    return ref
+
+
+rule rigid_align_runs:
+    input:
+        ref=_get_ref_run,
+        b0=bids(
+            root=work,
+            suffix="b0.nii.gz",
+            desc="degibbs",
+            datatype="dwi",
+            **input_wildcards["dwi"]
+        ),
+        data=multiext(
+            bids(
+                root=work,
+                suffix="dwi",
+                desc="degibbs",
+                datatype="dwi",
+                **input_wildcards["dwi"]
+            ),
+            ".nii.gz",
+            ".bvec",
+            ".bval",
+            ".json",
+        ),
+    params:
+        do_txf=lambda wildcards, input: (
+            "true" if input["ref"] != input["b0"] else "false"
+        )
+    output:
+        b0=temp(bids(
+            root=work,
+            suffix="b0reg.nii.gz",
+            desc="degibbs",
+            datatype="dwi",
+            **input_wildcards["dwi"]
+        )),
+        data=temp(multiext(
+            bids(
+                root=work,
+                suffix="dwireg",
+                desc="degibbs",
+                datatype="dwi",
+                **input_wildcards["dwi"]
+            ),
+            ".nii.gz",
+            ".bvec",
+            ".bval",
+            ".json",
+        ))
+    shadow: 'minimal'
+    container:
+        config["singularity"]["mrtrix"]
+    group:
+        "subj"
+    shell:
+        """
+        if {params.do_txf}; then
+            mrregister -type rigid {input.b0} {input.ref} -rigid txf.mat
+            mrtransform {input.b0} {output.b0} -template {input.ref} -linear txf.mat
+            mrconvert {input.data[0]} -fslgrad {input.data[1]} {input.data[2]} data.mif
+            mrtransform data.mif resliced.mif -template {input.ref} -linear txf.mat 
+            mrconvert resliced.mif {output.data[0]} \\
+                -export_grad_fsl {output.data[1]} {output.data[2]}
+        else
+            cp {input.b0} {output.b0}
+            cp {input.data[0]} {output.data[0]}
+            cp {input.data[1]} {output.data[1]}
+            cp {input.data[2]} {output.data[2]}
+        fi
+        cp {input.data[3]} {output.data[3]}
+        """
+
+
 def get_concat_or_cp_cmd(wildcards, input, output):
     """Concatenate (if multiple inputs) or copy"""
     if len(input) > 1:
@@ -121,16 +217,14 @@ def get_concat_or_cp_cmd(wildcards, input, output):
 rule concat_degibbs_dwi:
     input:
         dwi_niis=lambda wildcards: get_dwi_indices(
-            expand(
+            inputs["dwi"].filter(**wildcards).expand(
                 bids(
                     root=work,
-                    suffix="dwi.nii.gz",
+                    suffix="dwireg.nii.gz",
                     desc="degibbs",
                     datatype="dwi",
                     **input_wildcards["dwi"]
                 ),
-                zip,
-                **filter_list(input_zip_lists["dwi"], wildcards)
             ),
             wildcards,
         ),
@@ -139,7 +233,7 @@ rule concat_degibbs_dwi:
     output:
         dwi_concat=bids(
             root=work,
-            suffix="dwi.nii.gz",
+            suffix="dwireg.nii.gz",
             desc="degibbs",
             datatype="dwi",
             **subj_wildcards
@@ -160,7 +254,7 @@ rule concat_runs_bvec:
             expand(
                 bids(
                     root=work,
-                    suffix="dwi.bvec",
+                    suffix="dwireg.bvec",
                     desc="{{desc}}",
                     datatype="dwi",
                     **input_wildcards["dwi"]
@@ -192,7 +286,7 @@ rule concat_runs_bval:
             expand(
                 bids(
                     root=work,
-                    suffix="dwi.bval",
+                    suffix="dwireg.bval",
                     desc="{{desc}}",
                     datatype="dwi",
                     **input_wildcards["dwi"]
@@ -277,7 +371,7 @@ rule get_shell_avgs:
         "../../scripts/diffusion/get_shell_avgs.py"
 
 
-# Extract individual shell (e.g. B0)
+# Extract individual shell (e.g. B0) before rigid alignment (output used to calculate alignemnt)
 rule get_shell_avg:
     input:
         dwi="{dwi_prefix}_dwi.nii.gz",
@@ -294,10 +388,10 @@ rule get_shell_avg:
         "../../scripts/diffusion/get_shell_avg.py"
 
 
-# Extract vols from particular shell (e.g. B0)
+# Extract vols from particular shell (e.g. B0), after rigid alignment
 rule get_shell_vols:
     input:
-        dwi="{dwi_prefix}_dwi.nii.gz",
+        dwi="{dwi_prefix}_dwireg.nii.gz",
         shells="{dwi_prefix}_dwi.shells.json",
     params:
         bval="{shell}",
@@ -380,7 +474,7 @@ rule concat_bzeros:
             expand(
                 bids(
                     root=work,
-                    suffix="b0.nii.gz",
+                    suffix="b0reg.nii.gz",
                     datatype="dwi",
                     desc="degibbs",
                     **input_wildcards["dwi"]

@@ -24,7 +24,6 @@ inputs = generate_inputs(
     use_bids_inputs=True,
 )
 
-
 # this adds constraints to the bids naming
 wildcard_constraints:
     **get_wildcard_constraints(config["pybids_inputs"]),
