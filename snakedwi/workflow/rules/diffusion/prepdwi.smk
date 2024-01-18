@@ -109,9 +109,9 @@ rule mrdegibbs:
 def get_concat_or_cp_cmd(wildcards, input, output):
     """Concatenate (if multiple inputs) or copy"""
     if len(input) > 1:
-        cmd = f"mrcat {input} {output}"
+        cmd = f"mrcat"
     elif len(input) == 1:
-        cmd = f"cp {input} {output}"
+        cmd = f"cp"
     else:
         # no inputs
         cmd = None
@@ -151,7 +151,7 @@ rule concat_degibbs_dwi:
     group:
         "subj"
     shell:
-        "{params.cmd} 2> {log}"
+        "{params.cmd} {input} {output} 2> {log}"
 
 
 rule concat_runs_bvec:
@@ -407,7 +407,7 @@ rule concat_bzeros:
     group:
         "subj"
     shell:
-        "{params.cmd} 2> {log}"
+        "{params.cmd} {input} {output} 2> {log}"
 
 
 def get_b0_mask():
