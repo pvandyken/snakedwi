@@ -7,12 +7,12 @@ rule import_dwi:
     input:
         dwi=re.sub(".nii.gz", ".{ext}", input_path["dwi"]),
     output:
-        dwi=bids(
+        dwi=temp(bids(
             root=work,
             suffix="dwi.{ext,nii.gz|bval|bvec|json}",
             datatype="dwi",
             **input_wildcards["dwi"]
-        ),
+        )),
     group:
         "subj"
     shell:

@@ -21,7 +21,8 @@ def check_eddy_s2v(
                 " 2. use the '--slspec_txt' option to provide a global slspec "
                 "file\n"
                 " 3. do not set the --use_eddy_s2v CLI option to disable "
-                "slice-to-volume correction"
+                "slice-to-volume correction",
+                file=sys.stderr
             )
             sys.exit(1)
 
@@ -30,12 +31,13 @@ def check_pe_direction(json_dwi: dict, default_pe_dir: str, json_file: str) -> N
     """Check if phase encoding direction is defined"""
     if "PhaseEncodingDirection" not in json_dwi:
         if not default_pe_dir == "":
-            print("WARNING: setting default PhaseEncodingDirection")
+            print("WARNING: setting default PhaseEncodingDirection", file=sys.stderr)
             json_dwi["PhaseEncodingDirection"] = default_pe_dir
         else:
             if "PhaseEncodingAxis" in json_dwi:
                 print(
-                    "WARNING: assuming PhaseEncodingDirection from " "PhaseEncodingAxis"
+                    "WARNING: assuming PhaseEncodingDirection from PhaseEncodingAxis",
+                    file=sys.stderr
                 )
                 json_dwi["PhaseEncodingDirection"] = json_dwi["PhaseEncodingAxis"]
             else:
@@ -43,7 +45,8 @@ def check_pe_direction(json_dwi: dict, default_pe_dir: str, json_file: str) -> N
                     f"ERROR: PhaseEncodingDirection not found in {json_file}."
                     "\nYou must add the PhaseEncodingDirection field to your "
                     "dwi JSON files, or use the "
-                    "--default_phase_encoding_direction CLI option"
+                    "--default_phase_encoding_direction CLI option",
+                    file=sys.stderr
                 )
                 sys.exit(1)
 
@@ -55,7 +58,7 @@ def check_echo_spacing(json_dwi: dict, default_echo_spacing: str) -> str:
     elif "EstimatedEffectiveEchoSpacing" in json_dwi:
         eff_echo = json_dwi["EstimatedEffectiveEchoSpacing"]
     else:
-        print("EffectiveEchoSpacing not defined in JSON, using default value")
+        print("EffectiveEchoSpacing not defined in JSON, using default value", file=sys.stderr)
         eff_echo = default_echo_spacing
 
     return eff_echo
