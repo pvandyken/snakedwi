@@ -511,6 +511,20 @@ rule dtifit_resampled_t1w:
             ),
             "dti_FA.nii.gz",
         ),
+        out_v1=os.path.join(
+            directory(
+                bids(
+                    root=root,
+                    suffix="dtifit",
+                    desc="eddy",
+                    space="T1w",
+                    res=config["resample_dwi"]["resample_scheme"],
+                    datatype="dwi",
+                    **subj_wildcards
+                )
+            ),
+            "dti_V1.nii.gz",
+        ),
     container:
         config["singularity"]["fsl"]
     group:

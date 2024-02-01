@@ -334,8 +334,8 @@ eddy:
     residuals: True
     data_is_shelled: True
   with_s2v:
-    mporder: 6
-    s2v_niter: 5
+    mporder: 35
+    s2v_niter: 7
     s2v_lambda: 1
     s2v_interp: trilinear
     ol_type: 'both'  #can be sw, gw, or both (use sw if no multi-band)

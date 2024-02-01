@@ -308,6 +308,7 @@ if config["use_eddy_gpu"]:
         threads: 1
         resources:
             gpus=1,
+            gpu_type="p100",
             runtime=180,  #6 hours (this is a conservative estimate, may be shorter)
             mem_mb=32000,
         group:
