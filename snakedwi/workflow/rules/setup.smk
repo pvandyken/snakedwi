@@ -6,11 +6,14 @@ from snakebids import (
     generate_inputs,
     filter_list,
     get_wildcard_constraints,
+    set_bids_spec
 )
 import subprocess as sp
 
 # from snakeboost import PipEnv
 from lib.check_subj_dwi_metadata import check_subj_dwi_metadata
+
+set_bids_spec("v0_0_0")
 
 
 # writes inputs_config.yml and updates config dict
